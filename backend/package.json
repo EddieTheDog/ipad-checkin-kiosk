@@ -1,21 +1,13 @@
 {
-  "name": "helpdesk-kiosk-backend",
+  "name": "helpdesk-backend",
   "version": "1.0.0",
-  "description": "Backend for iPad Helpdesk Kiosk",
-  "main": "server.cjs",
+  "type": "commonjs",
   "scripts": {
-    "start": "node server.cjs",
-    "dev": "nodemon server.cjs"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "qrcode": "^1.5.1",
-    "multer": "^1.4.5-lts.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
-  "engines": {
-    "node": ">=18"
+    "multer": "^1.4.4",
+    "qrcode": "^1.5.1"
   }
 }
