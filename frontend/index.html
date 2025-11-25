@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Check-In Kiosk</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="kiosk-container">
+  <h1>Welcome! Please Check In</h1>
+  <form id="checkinForm">
+      <input type="text" name="name" placeholder="Full Name" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="tel" name="phone" placeholder="Phone Number" required>
+      <input type="text" name="meeting_with" placeholder="Who are you meeting?" required>
+      <textarea name="notes" placeholder="Additional notes"></textarea>
+      <button type="submit">Check In</button>
+  </form>
+  <p id="message"></p>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
