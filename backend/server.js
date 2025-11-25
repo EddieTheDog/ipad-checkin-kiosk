@@ -40,7 +40,7 @@ app.post('/checkin', async (req,res)=>{
     res.json({success:true, qr});
 });
 
-// Visitor status page (chat-style)
+// Visitor status page (boxes, cannot send until admin message)
 app.get('/status/:id', (req,res)=>{
     const checkins = loadCheckins();
     const ticket = checkins.find(t => t.id == req.params.id);
@@ -50,29 +50,32 @@ app.get('/status/:id', (req,res)=>{
     <h1>Hello ${ticket.name}</h1>
     <p>Status: <strong>${ticket.status}</strong></p>
     <h3>Conversation:</h3>
-    <div class="message-container clearfix">`;
+    <div class="message-container">`;
 
-    // Combine visitor + admin messages in chronological order
     const messages = [];
     ticket.adminResponses.forEach(a=>messages.push({type:'admin', text:a.message, website:a.website, timestamp:a.timestamp}));
     ticket.visitorResponses.forEach(v=>messages.push({type:'visitor', text:v.message, image:v.image, timestamp:v.timestamp}));
     messages.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
 
     messages.forEach(m=>{
-        html += `<div class="message-bubble ${m.type}-message clearfix">
+        html += `<div class="message-box ${m.type}-box">
                     ${m.text}
                     ${m.website ? `<br><small>Cite: <a href="${m.website}" target="_blank">${m.website}</a></small>` : ''}
                     ${m.image ? `<br><img src="${m.image}" style="max-width:150px;">` : ''}
-                    <br><small>${new Date(m.timestamp).toLocaleString()}</small>
+                    <div class="message-meta">${new Date(m.timestamp).toLocaleString()}</div>
                  </div>`;
     });
+
+    // Check if visitor can send
+    const canSend = ticket.adminResponses.length>0 && ticket.status==='opened';
 
     html += `</div>
     <h3>Send Follow-up / Appeal:</h3>
     <form method="POST" action="/followup/${ticket.id}" enctype="multipart/form-data">
-        <textarea name="message" placeholder="Your message" required></textarea><br>
-        ${ticket.status==='opened' ? '<input type="file" name="image" accept="image/*"><br>' : ''}
-        <button type="submit">Send</button>
+        <textarea name="message" placeholder="Your message" required ${canSend ? '' : 'disabled'}></textarea><br>
+        ${ticket.status==='opened' && canSend ? '<input type="file" name="image" accept="image/*"><br>' : ''}
+        <button type="submit" ${canSend ? '' : 'disabled'}>Send</button>
+        ${!canSend ? '<p style="color:red;">You cannot send a message until the admin responds.</p>' : ''}
     </form></div>`;
 
     res.send(html);
@@ -84,6 +87,10 @@ app.post('/followup/:id', upload.single('image'), (req,res)=>{
     const ticket = checkins.find(t => t.id == req.params.id);
     if(!ticket) return res.status(404).send("Ticket not found");
 
+    if(ticket.adminResponses.length===0){
+        return res.status(403).send("Cannot send message until admin responds");
+    }
+
     const img = (ticket.status==='opened') ? (req.file ? `/uploads/${req.file.filename}` : '') : '';
 
     ticket.visitorResponses.push({
@@ -92,7 +99,6 @@ app.post('/followup/:id', upload.single('image'), (req,res)=>{
         timestamp: new Date()
     });
 
-    // Reopen if closed/declined
     if(ticket.status==='closed' || ticket.status==='declined'){
         ticket.status='opened';
     }
@@ -144,7 +150,7 @@ app.get('/review/:id', (req,res)=>{
     let html = `<h1>Review Ticket: ${t.name}</h1>
     <p><strong>Original Request:</strong> ${t.request}</p>
     <h3>Conversation:</h3>
-    <div class="message-container clearfix">`;
+    <div class="message-container">`;
 
     const messages = [];
     t.adminResponses.forEach(a=>messages.push({type:'admin', text:a.message, website:a.website, timestamp:a.timestamp}));
@@ -152,11 +158,11 @@ app.get('/review/:id', (req,res)=>{
     messages.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
 
     messages.forEach(m=>{
-        html += `<div class="message-bubble ${m.type}-message clearfix">
+        html += `<div class="message-box ${m.type}-box">
                     ${m.text}
                     ${m.website ? `<br><small>Cite: <a href="${m.website}" target="_blank">${m.website}</a></small>` : ''}
                     ${m.image ? `<br><img src="${m.image}" style="max-width:100px;">` : ''}
-                    <br><small>${new Date(m.timestamp).toLocaleString()}</small>
+                    <div class="message-meta">${new Date(m.timestamp).toLocaleString()}</div>
                  </div>`;
     });
 
