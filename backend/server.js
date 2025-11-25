@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import fs from 'fs';
 import QRCode from 'qrcode';
 import path from 'path';
@@ -11,13 +10,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// ✅ Configure CORS to allow frontend
-app.use(cors({
-    origin: 'https://ipad-checkin-kiosk.onrender.com', // replace with your frontend domain
-    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-    credentials: true
-}));
 
 const DATA_FILE = './checkins.json';
 const PORT = process.env.PORT || 3000;
@@ -38,7 +30,7 @@ app.post('/checkin', async (req, res) => {
     checkins.push(newCheckin);
     saveCheckins(checkins);
 
-    const qr = await QRCode.toDataURL(`${req.protocol}://${req.get('host')}/status/${id}`);
+    const qr = await QRCode.toDataURL(`/status/${id}`);
     res.json({ success: true, qr });
 });
 
