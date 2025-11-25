@@ -2,40 +2,44 @@ body {
   font-family: Arial, sans-serif;
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
+  align-items: flex-start;
   margin: 0;
-  background-color: #f0f0f0;
+  background-color: #f4f4f4;
+  padding: 20px;
 }
 
 .kiosk-container {
   background: white;
-  padding: 40px;
-  border-radius: 15px;
-  text-align: center;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  padding: 30px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
-  padding: 15px;
-  margin: 10px 0;
-  font-size: 18px;
+  padding: 12px;
+  margin: 8px 0;
+  font-size: 16px;
 }
 
 button {
-  padding: 15px;
-  font-size: 18px;
+  padding: 12px;
+  font-size: 16px;
   background-color: #007bff;
   color: white;
   border: none;
-  width: 100%;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
 button:hover {
   background-color: #0056b3;
+}
+
+img.ticket-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 10px;
 }
