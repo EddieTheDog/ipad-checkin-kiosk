@@ -1,0 +1,130 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f2f5;
+    margin: 0;
+    padding: 0;
+}
+
+.status-container {
+    max-width: 700px;
+    margin: 40px auto;
+    background-color: #fff;
+    padding: 25px 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+h3 {
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 20px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+/* Messages container */
+.message-container {
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background-color: #fafafa;
+}
+
+/* Message boxes */
+.message-box {
+    padding: 14px 18px;
+    border-radius: 12px;
+    max-width: 70%;
+    word-wrap: break-word;
+    line-height: 1.4;
+    font-size: 16px;
+    position: relative;
+}
+
+.admin-box {
+    background-color: #d0e6ff;
+    border-left: 4px solid #007bff;
+    align-self: flex-start;
+}
+
+.visitor-box {
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    align-self: flex-end;
+}
+
+.message-meta {
+    font-size: 0.75em;
+    color: #555;
+    margin-top: 5px;
+    text-align: right;
+}
+
+/* Scrollbar for message container */
+.message-container::-webkit-scrollbar {
+    width: 8px;
+}
+.message-container::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 4px;
+}
+
+/* Form styling */
+textarea, input[type="file"], button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Version and ticket status */
+.version-number {
+    font-size: 0.75em;
+    color: #999;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.ticket-status-msg {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #d9534f;
+    text-align: center;
+}
+
+/* Image inside message box */
+.message-box img {
+    max-width: 150px;
+    border-radius: 8px;
+    margin-top: 5px;
+}
