@@ -9,8 +9,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ✅ Configure CORS to allow frontend
+app.use(cors({
+    origin: 'https://ipad-checkin-kiosk.onrender.com', // replace with your frontend domain
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    credentials: true
+}));
 
 const DATA_FILE = './checkins.json';
 const PORT = process.env.PORT || 3000;
@@ -19,11 +26,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
 
-// Load/save
+// Load/save check-ins
 const loadCheckins = () => fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : [];
 const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 
-// Visitor submits request
+// POST /checkin
 app.post('/checkin', async (req, res) => {
     const checkins = loadCheckins();
     const id = Date.now();
@@ -47,9 +54,7 @@ app.get('/admin', (req, res) => {
             <td>${c.phone}</td>
             <td>${c.request}</td>
             <td>${c.status}</td>
-            <td>
-                <a href="/review/${c.id}">Review</a>
-            </td>
+            <td><a href="/review/${c.id}">Review</a></td>
         </tr>`;
     });
     html += `</table>`;
@@ -84,7 +89,7 @@ app.get('/review/:id', (req, res) => {
 });
 
 // Handle admin response
-app.post('/respond/:id', express.urlencoded({ extended: true }), (req, res) => {
+app.post('/respond/:id', (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
     if (!c) return res.status(404).send("Request not found");
