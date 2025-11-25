@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkinForm');
     const message = document.getElementById('message');
-
-    // Replace with your actual Render URL
-    const BACKEND_URL = 'https://ipad-checkin-kiosk.onrender.com';
+    const BACKEND_URL = 'https://ipad-helpdesk-kiosk.onrender.com'; // Replace with your Render URL
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -23,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
 
             if (response.ok) {
-                message.innerHTML = `✅ Check-in successful!<br>
+                message.innerHTML = `✅ Request submitted!<br>
                                      Scan this QR code to see your status:<br>
                                      <img src="${result.qr}" alt="QR Code">`;
                 form.reset();
