@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkinForm');
     const message = document.getElementById('message');
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async e => {
         e.preventDefault();
         const data = {
             name: form.name.value,
@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
         message.textContent = "Submitting...";
         form.querySelector('button').disabled = true;
 
+        const formData = new FormData(form);
         try {
             const response = await fetch('/checkin', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: formData
             });
             const result = await response.json();
             if(response.ok){
