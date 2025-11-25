@@ -1,6 +1,6 @@
 const form = document.getElementById('checkinForm');
 const message = document.getElementById('message');
-const BACKEND_URL = 'https://YOUR_RENDER_BACKEND_URL';
+const BACKEND_URL = 'https://YOUR_RENDER_URL'; // Replace with your Render URL
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
