@@ -17,20 +17,26 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(IMAGE_DIR));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Helpers
+// Helper functions
 const loadCheckins = () => fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : [];
-const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data,null,2));
+const saveCheckins = data => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null,2));
 
-// Kiosk submit
-app.post('/checkin', async (req,res)=>{
+// ----------------- Kiosk Submit -----------------
+app.post('/checkin', upload.single('image'), async (req,res)=>{
     const checkins = loadCheckins();
     const id = Date.now();
     const ticket = {
         id,
-        ...req.body,
         status: 'opened',
+        lastAdminSeen: null,
+        name: req.body.name,
+        email: req.body.email,
+        phone: req.body.phone,
+        request: req.body.request,
+        image: req.file ? `/uploads/${req.file.filename}` : null,
         adminResponses: [],
         visitorResponses: [],
+        declineReason: null,
         timestamp: new Date()
     };
     checkins.push(ticket);
@@ -41,82 +47,81 @@ app.post('/checkin', async (req,res)=>{
     res.json({success:true, qr});
 });
 
-// Visitor status page
+// ----------------- Visitor Status -----------------
 app.get('/status/:id', (req,res)=>{
     const checkins = loadCheckins();
-    const ticket = checkins.find(t => t.id == req.params.id);
-    if(!ticket) return res.send("<h1>Ticket not found</h1>");
+    const t = checkins.find(c=>c.id==req.params.id);
+    if(!t) return res.send("<h1>Ticket not found</h1>");
 
-    let html = `<h1>Hello ${ticket.name}</h1><p>Status: <strong>${ticket.status}</strong></p>`;
+    let html = `<div class="status-container">
+    <h2>Hello ${t.name}</h2>
+    <p>Status: <strong>${t.status}</strong>${t.status==='declined'?` (Reason: ${t.declineReason})`:''}</p>
+    <div class="messages-panel">`;
 
     // Admin messages
-    if(ticket.adminResponses.length){
-        html += `<h3>Admin Responses:</h3>`;
-        ticket.adminResponses.forEach(a=>{
-            html += `<div style="border:1px solid #007bff; background:#f0f8ff; padding:5px; margin-bottom:5px;">
-                        ${a.message}
-                        ${a.website ? `<br><small>Cite: <a href="${a.website}" target="_blank">${a.website}</a></small>` : ''}
-                        <br><small>${new Date(a.timestamp).toLocaleString()}</small>
-                     </div>`;
-        });
-    }
+    t.adminResponses.forEach(a=>{
+        html += `<div class="message-panel admin-message">${a.message}
+                 ${a.website?`<br><small>Cite: <a href="${a.website}" target="_blank">${a.website}</a></small>`:''}
+                 <div class="timestamp">${new Date(a.timestamp).toLocaleString()}</div></div>`;
+    });
 
     // Visitor messages
-    if(ticket.visitorResponses.length){
-        html += `<h3>Your Messages:</h3>`;
-        ticket.visitorResponses.forEach(v=>{
-            html += `<div style="border:1px solid #ccc; padding:5px; margin-bottom:5px;">
-                        ${v.message}
-                        ${v.image ? `<br><img src="${v.image}" style="max-width:150px;">` : ''}
-                        <br><small>${new Date(v.timestamp).toLocaleString()}</small>
-                     </div>`;
-        });
+    t.visitorResponses.forEach(v=>{
+        html += `<div class="message-panel visitor-message">${v.message}
+                 ${v.image?`<br><img src="${v.image}" style="max-width:150px;">`:''}
+                 <div class="timestamp">${new Date(v.timestamp).toLocaleString()}</div></div>`;
+    });
+
+    html += `</div>`;
+
+    // Follow-up / appeal
+    if(t.status==='opened' || t.status==='closed' || t.status==='declined'){
+        html += `<h3>Send Message / Appeal</h3>
+                 <form method="POST" action="/followup/${t.id}">
+                     <textarea name="message" placeholder="Your message" required></textarea><br>`;
+        if(t.status==='opened') html += `<input type="file" name="image" accept="image/*"><br>`;
+        html += `<button type="submit">Send</button>
+                 </form>`;
     }
 
-    // Follow-up form
-    const allowFollowUp = true; // Only text for appeals or follow-ups
-    html += `<h3>Send Follow-up / Appeal:</h3>
-             <form method="POST" action="/followup/${ticket.id}" enctype="multipart/form-data">
-                 <textarea name="message" placeholder="Your message" required></textarea><br>`;
-    if(ticket.status==='opened'){
-        html += `<input type="file" name="image" accept="image/*"><br>`;
-    }
-    html += `<button type="submit"${!allowFollowUp?' disabled':''}>Send Follow-up</button>
-             </form>`;
-
+    html += `</div>`;
     res.send(html);
 });
 
-// Visitor follow-up
+// ----------------- Visitor Follow-Up -----------------
 app.post('/followup/:id', upload.single('image'), (req,res)=>{
     const checkins = loadCheckins();
-    const ticket = checkins.find(t => t.id == req.params.id);
-    if(!ticket) return res.status(404).send("Ticket not found");
+    const t = checkins.find(c=>c.id==req.params.id);
+    if(!t) return res.status(404).send("Ticket not found");
 
-    const img = (ticket.status==='opened') ? (req.file ? `/uploads/${req.file.filename}` : '') : '';
+    // Enforce rules: visitor cannot send multiple follow-ups until they see admin response
+    const lastAdminTime = t.adminResponses.length ? new Date(t.adminResponses[t.adminResponses.length-1].timestamp) : 0;
+    const lastVisitorTime = t.visitorResponses.length ? new Date(t.visitorResponses[t.visitorResponses.length-1].timestamp) : 0;
 
-    ticket.visitorResponses.push({
+    if(lastAdminTime <= lastVisitorTime){
+        return res.send("<p>Wait for admin response before sending another message.</p>");
+    }
+
+    t.visitorResponses.push({
         message: req.body.message,
-        image: img,
+        image: t.status==='opened' && req.file ? `/uploads/${req.file.filename}` : null,
         timestamp: new Date()
     });
 
-    // Reopen if closed/declined
-    if(ticket.status==='closed' || ticket.status==='declined'){
-        ticket.status='opened';
-    }
+    // Reopen if appeal
+    if(t.status==='closed' || t.status==='declined') t.status='opened';
 
     saveCheckins(checkins);
-    res.redirect(`/status/${ticket.id}`);
+    res.redirect(`/status/${t.id}`);
 });
 
-// Admin dashboard
+// ----------------- Admin Dashboard -----------------
 app.get('/admin', (req,res)=>{
     const checkins = loadCheckins();
-    const renderTicketRow = (t)=>{
+    const renderTicketRow = t=>{
         const lastAdmin = t.adminResponses.length ? new Date(t.adminResponses[t.adminResponses.length-1].timestamp) : 0;
         const hasNew = t.visitorResponses.some(v=>new Date(v.timestamp) > lastAdmin);
-        const dot = hasNew ? '🔴 ' : '';
+        const dot = hasNew ? '<span class="red-dot">●</span> ' : '';
         return `<tr>
             <td>${dot}${t.name}</td>
             <td>${t.email}</td>
@@ -127,60 +132,45 @@ app.get('/admin', (req,res)=>{
         </tr>`;
     };
 
-    let html = `<h1>Admin Dashboard</h1>`;
-    const categories = [
-        {title:'Waiting for Review', filter: t=>t.status==='opened'},
-        {title:'Accepted / In Progress', filter: t=>t.status==='accepted'},
-        {title:'Closed / Declined', filter: t=>t.status==='closed'||t.status==='declined'}
-    ];
-    categories.forEach(cat=>{
-        html+=`<h2>${cat.title}</h2><table border="1">
-            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Request</th><th>Status</th><th>Actions</th></tr>`;
-        checkins.filter(cat.filter).forEach(t=>{ html+=renderTicketRow(t); });
-        html+=`</table>`;
-    });
+    let html = `<h1>Admin Dashboard</h1><table border="1">
+                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Request</th><th>Status</th><th>Actions</th></tr>`;
+    checkins.forEach(t=> html+=renderTicketRow(t));
+    html += '</table>';
     res.send(html);
 });
 
-// Admin review page with rich text
+// ----------------- Admin Review -----------------
 app.get('/review/:id', (req,res)=>{
     const checkins = loadCheckins();
     const t = checkins.find(c=>c.id==req.params.id);
     if(!t) return res.send("Ticket not found");
 
     const declineOptions = ['Incomplete info','Not eligible','Other'];
-
     let html = `<h1>Review Ticket: ${t.name}</h1>
-    <p><strong>Original Request:</strong> ${t.request}</p>`;
+    <p><strong>Original Request:</strong> ${t.request}</p>
+    <div class="messages-panel">`;
 
-    // Visitor messages
-    html += `<h3>Visitor Messages:</h3>`;
-    html += t.visitorResponses.length ? t.visitorResponses.map(v=>`
-    <div style="border:1px solid #ccc; padding:5px; margin-bottom:5px;">
-        ${v.message}
-        ${v.image ? `<br><img src="${v.image}" style="max-width:100px;">` : ''}
-        <br><small>${new Date(v.timestamp).toLocaleString()}</small>
-    </div>`).join('') : '<p>No visitor messages yet.</p>';
+    t.visitorResponses.forEach(v=>{
+        html += `<div class="message-panel visitor-message">${v.message}
+                 ${v.image?`<br><img src="${v.image}" style="max-width:150px;">`:''}
+                 <div class="timestamp">${new Date(v.timestamp).toLocaleString()}</div></div>`;
+    });
 
-    // Admin messages
-    html += `<h3>Admin Responses:</h3>`;
-    html += t.adminResponses.length ? t.adminResponses.map(a=>`
-    <div style="border:1px solid #007bff; padding:5px; margin-bottom:5px; background:#f0f8ff">
-        ${a.message}
-        ${a.website ? `<br><small>Cite: <a href="${a.website}" target="_blank">${a.website}</a></small>` : ''}
-        <br><small>${new Date(a.timestamp).toLocaleString()}</small>
-    </div>`).join('') : '<p>No admin responses yet.</p>';
+    t.adminResponses.forEach(a=>{
+        html += `<div class="message-panel admin-message">${a.message}
+                 ${a.website?`<br><small>Cite: <a href="${a.website}" target="_blank">${a.website}</a></small>`:''}
+                 <div class="timestamp">${new Date(a.timestamp).toLocaleString()}</div></div>`;
+    });
 
-    // Review form
-    html += `<form method="POST" action="/respond/${t.id}">
+    html += `</div>
+    <form method="POST" action="/respond/${t.id}">
         <label>Action:</label>
-        <select id="actionSelect" name="action">
+        <select id="actionSelect" name="action" required>
             <option value="">--Select--</option>
             <option value="accept">Accept</option>
             <option value="decline">Decline</option>
             <option value="close">Close</option>
         </select>
-
         <div id="acceptFields" style="display:none; margin-top:10px;">
             <label>Message:</label>
             <div>
@@ -194,7 +184,6 @@ app.get('/review/:id', (req,res)=>{
             <label>Cite Website (optional):</label>
             <input type="text" name="website" placeholder="https://example.com">
         </div>
-
         <div id="declineFields" style="display:none; margin-top:10px;">
             <label>Decline reason:</label>
             <select name="decline_reason">
@@ -204,30 +193,18 @@ app.get('/review/:id', (req,res)=>{
         </div>
         <br><button type="submit">Submit</button>
     </form>
-    <br><a href="/admin">Back to Dashboard</a>
-
+    <a href="/admin">Back to Dashboard</a>
     <script>
     document.getElementById('actionSelect').addEventListener('change', function(){
-        const acceptDiv = document.getElementById('acceptFields');
-        const declineDiv = document.getElementById('declineFields');
-        if(this.value==='accept'){
-            acceptDiv.style.display='block';
-            declineDiv.style.display='none';
-        } else if(this.value==='decline'){
-            acceptDiv.style.display='none';
-            declineDiv.style.display='block';
-        } else {
-            acceptDiv.style.display='none';
-            declineDiv.style.display='none';
-        }
+        document.getElementById('acceptFields').style.display = this.value==='accept'?'block':'none';
+        document.getElementById('declineFields').style.display = this.value==='decline'?'block':'none';
     });
-
     function addTag(tag){
         const textarea = document.getElementById('adminMessage');
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const selected = textarea.value.substring(start,end);
-        const insert = selected ? '<'+tag+'>'+selected+'</'+tag+'>' : '<'+tag+'></'+tag+'>';
+        const insert = selected?'<'+tag+'>'+selected+'</'+tag+'>':'<'+tag+'></'+tag+'>';
         textarea.setRangeText(insert, start, end, 'end');
         textarea.focus();
     }
@@ -236,24 +213,26 @@ app.get('/review/:id', (req,res)=>{
     res.send(html);
 });
 
-// Admin respond
+// ----------------- Admin Respond -----------------
 app.post('/respond/:id', (req,res)=>{
     const checkins = loadCheckins();
     const t = checkins.find(c=>c.id==req.params.id);
     if(!t) return res.status(404).send("Ticket not found");
 
-    const {action, message, decline_reason, website} = req.body;
+    const {action, message, website, decline_reason} = req.body;
 
     if(action==='accept'){
         t.status='accepted';
-        if(message) t.adminResponses.push({message: message, website: website||'', timestamp: new Date()});
+        if(message) t.adminResponses.push({message, website: website||'', timestamp: new Date()});
     } else if(action==='decline'){
         t.status='declined';
-        t.adminResponses.push({message: decline_reason || 'Declined', timestamp: new Date()});
+        t.declineReason = decline_reason || 'Declined';
+        if(decline_reason) t.adminResponses.push({message:'Declined: '+decline_reason, timestamp: new Date()});
     } else if(action==='close'){
         t.status='closed';
     }
 
+    t.lastAdminSeen = new Date();
     saveCheckins(checkins);
     res.redirect('/admin');
 });
