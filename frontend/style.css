@@ -1,69 +1,69 @@
 body {
-  font-family: Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  margin: 0;
-  background-color: #f4f4f4;
-  padding: 20px;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
 }
 
-.kiosk-container {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+.kiosk-container, .status-container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    margin: 20px auto;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-input, textarea {
-  width: 100%;
-  padding: 12px;
-  margin: 8px 0;
-  font-size: 16px;
+input, textarea, select {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    font-size: 16px;
+    box-sizing: border-box;
 }
 
 button {
-  padding: 12px;
-  font-size: 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+    padding: 12px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 button:hover {
-  background-color: #0056b3;
+    background-color: #0056b3;
 }
 
-.message-panel {
-  max-height: 300px;
-  overflow-y: auto;
-  margin-bottom: 15px;
-  border: 1px solid #ccc;
-  padding: 10px;
-  border-radius: 8px;
-  background: #fafafa;
+.message-bubble {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 10px;
+    max-width: 80%;
+    clear: both;
 }
 
-.message-visitor {
-  background-color: #e1f5fe;
-  padding: 8px;
-  margin: 5px 0;
-  border-radius: 6px;
+.admin-message {
+    background-color: #d0e6ff;
+    float: left;
 }
 
-.message-admin {
-  background-color: #fce4ec;
-  padding: 8px;
-  margin: 5px 0;
-  border-radius: 6px;
+.visitor-message {
+    background-color: #e2ffe2;
+    float: right;
 }
 
-.message-meta {
-  font-size: 12px;
-  color: #555;
-  margin-top: 2px;
+.message-container {
+    display: flex;
+    flex-direction: column;
 }
+
+.clearfix::after {
+    content: "";
+    clear: both;
+    display: table;
+}
+
+h3 { margin-top: 20px; margin-bottom: 5px; }
