@@ -15,19 +15,19 @@ app.use(express.json());
 const DATA_FILE = './checkins.json';
 const PORT = process.env.PORT || 3000;
 
-// Serve frontend files
+// Serve frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
 
-// Load/save check-ins
+// Load/save
 const loadCheckins = () => fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : [];
 const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 
-// POST /checkin route
+// Visitor submits request
 app.post('/checkin', async (req, res) => {
     const checkins = loadCheckins();
     const id = Date.now();
-    const newCheckin = { id, ...req.body, status: 'pending', timestamp: new Date() };
+    const newCheckin = { id, ...req.body, status: 'pending', response: '', timestamp: new Date() };
     checkins.push(newCheckin);
     saveCheckins(checkins);
 
@@ -39,18 +39,16 @@ app.post('/checkin', async (req, res) => {
 app.get('/admin', (req, res) => {
     const checkins = loadCheckins();
     let html = `<h1>Admin Dashboard</h1><table border="1">
-        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Meeting With</th><th>Notes</th><th>Status</th><th>Actions</th></tr>`;
+        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Request</th><th>Status</th><th>Actions</th></tr>`;
     checkins.reverse().forEach(c => {
         html += `<tr>
             <td>${c.name}</td>
             <td>${c.email}</td>
             <td>${c.phone}</td>
-            <td>${c.meeting_with}</td>
-            <td>${c.notes || ''}</td>
+            <td>${c.request}</td>
             <td>${c.status}</td>
             <td>
-                <a href="/approve/${c.id}">✅ Approve</a> |
-                <a href="/deny/${c.id}">❌ Deny</a>
+                <a href="/review/${c.id}">Review</a>
             </td>
         </tr>`;
     });
@@ -58,18 +56,44 @@ app.get('/admin', (req, res) => {
     res.send(html);
 });
 
-// Approve / Deny
-app.get('/approve/:id', (req, res) => {
+// Review page
+app.get('/review/:id', (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
-    if (c) { c.status = 'approved'; saveCheckins(checkins); }
-    res.redirect('/admin');
+    if (!c) return res.send("Request not found");
+
+    const declineOptions = ['Incomplete info', 'Not eligible', 'Other'];
+    let optionsHTML = declineOptions.map(o => `<option value="${o}">${o}</option>`).join('');
+
+    let html = `<h1>Review Request: ${c.name}</h1>
+        <p>Request: ${c.request}</p>
+        <form action="/respond/${c.id}" method="POST">
+            <label>Status:</label>
+            <select name="status">
+                <option value="approved">Approve</option>
+                <option value="denied">Deny</option>
+            </select><br><br>
+            <label>Decline reason / Response:</label><br>
+            <select name="decline_reason"><option value="">--Select if denied--</option>${optionsHTML}</select><br>
+            <textarea name="response" placeholder="Write response here"></textarea><br>
+            <input type="text" name="contact_method" placeholder="Email or Call"><br><br>
+            <button type="submit">Submit & Close</button>
+        </form>
+        <br><a href="/admin">Back to Admin Dashboard</a>`;
+    res.send(html);
 });
 
-app.get('/deny/:id', (req, res) => {
+// Handle admin response
+app.post('/respond/:id', express.urlencoded({ extended: true }), (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
-    if (c) { c.status = 'denied'; saveCheckins(checkins); }
+    if (!c) return res.status(404).send("Request not found");
+
+    const { status, decline_reason, response, contact_method } = req.body;
+    c.status = status;
+    c.response = status === 'denied' ? decline_reason : response;
+    c.contact_method = contact_method || '';
+    saveCheckins(checkins);
     res.redirect('/admin');
 });
 
@@ -77,13 +101,11 @@ app.get('/deny/:id', (req, res) => {
 app.get('/status/:id', (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
-    if (!c) return res.send("<h1>Check-in not found</h1>");
+    if (!c) return res.send("<h1>Request not found</h1>");
 
     let html = `<h1>Hello ${c.name}</h1><p>Status: <strong>${c.status}</strong></p>`;
-    if (c.status === 'denied') html += `<p>Unfortunately, you are not approved. Please contact reception.</p>`;
-    else if (c.status === 'approved') html += `<p>You are approved! Please proceed to your meeting.</p>`;
-    else html += `<p>Your check-in is pending approval. Please wait.</p>`;
-    
+    if (c.response) html += `<p>Message: ${c.response}</p>`;
+    if (c.contact_method) html += `<p>Contact Method: ${c.contact_method}</p>`;
     res.send(html);
 });
 
