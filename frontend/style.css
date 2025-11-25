@@ -37,33 +37,33 @@ button:hover {
     background-color: #0056b3;
 }
 
-.message-bubble {
-    padding: 10px;
-    margin: 5px 0;
-    border-radius: 10px;
-    max-width: 80%;
-    clear: both;
-}
-
-.admin-message {
-    background-color: #d0e6ff;
-    float: left;
-}
-
-.visitor-message {
-    background-color: #e2ffe2;
-    float: right;
-}
-
+/* Chat boxes */
 .message-container {
     display: flex;
     flex-direction: column;
+    gap: 10px;
 }
 
-.clearfix::after {
-    content: "";
-    clear: both;
-    display: table;
+.message-box {
+    padding: 12px;
+    border-radius: 10px;
+    max-width: 90%;
+}
+
+.admin-box {
+    background-color: #d0e6ff;
+    border-left: 4px solid #007bff;
+}
+
+.visitor-box {
+    background-color: #fff;
+    border: 1px solid #ccc;
+}
+
+.message-meta {
+    font-size: 0.8em;
+    color: #555;
+    margin-top: 4px;
 }
 
 h3 { margin-top: 20px; margin-bottom: 5px; }
