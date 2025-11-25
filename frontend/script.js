@@ -2,11 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkinForm');
     const message = document.getElementById('message');
 
-    // Same-origin, relative paths
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
 
         message.textContent = "Submitting...";
         form.querySelector('button').disabled = true;
@@ -14,23 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/checkin', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: formData
             });
-
             const result = await response.json();
-
-            if (response.ok) {
-                message.innerHTML = `✅ Request submitted!<br>
-                                     Scan this QR code to see your status:<br>
+            if(response.ok){
+                message.innerHTML = `✅ Ticket submitted!<br>
+                                     Scan this QR code to track your request:<br>
                                      <img src="${result.qr}" alt="QR Code">`;
                 form.reset();
             } else {
-                message.textContent = result.error || "Something went wrong.";
+                message.textContent = result.error || "Error submitting ticket.";
             }
-        } catch (err) {
+        } catch(err){
             console.error(err);
-            message.textContent = "Network error. Please try again.";
+            message.textContent = "Network error, please try again.";
         } finally {
             form.querySelector('button').disabled = false;
         }
