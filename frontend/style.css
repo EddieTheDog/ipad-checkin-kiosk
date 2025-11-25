@@ -17,7 +17,7 @@ body {
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-input, textarea, select {
+input, textarea {
   width: 100%;
   padding: 12px;
   margin: 8px 0;
@@ -36,10 +36,4 @@ button {
 
 button:hover {
   background-color: #0056b3;
-}
-
-img.ticket-image {
-  max-width: 100%;
-  border-radius: 8px;
-  margin-top: 10px;
 }
