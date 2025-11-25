@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkinForm');
     const message = document.getElementById('message');
 
-    // Same-origin URL — relative paths
+    // Same-origin, relative paths
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(form);
