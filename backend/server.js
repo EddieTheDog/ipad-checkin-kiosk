@@ -1,33 +1,28 @@
-import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import QRCode from 'qrcode';
-import multer from 'multer';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const QRCode = require('qrcode');
+const multer = require('multer');
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-const DATA_FILE = './checkins.json';
-const IMAGE_DIR = './uploads';
+const DATA_FILE = path.join(__dirname, 'checkins.json');
+const IMAGE_DIR = path.join(__dirname, 'uploads');
 if(!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR);
 
 const upload = multer({ dest: IMAGE_DIR });
 const PORT = process.env.PORT || 3000;
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(IMAGE_DIR));
 app.use(express.static(path.join(__dirname, '../frontend')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
 
+// Helpers
 const loadCheckins = () => fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : [];
-const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data,null,2));
 
-// Kiosk ticket submission
-app.post('/checkin', async (req, res) => {
+// Kiosk submit
+app.post('/checkin', async (req,res)=>{
     const checkins = loadCheckins();
     const id = Date.now();
     const ticket = {
@@ -43,7 +38,7 @@ app.post('/checkin', async (req, res) => {
 
     const qrURL = `${req.protocol}://${req.get('host')}/status/${id}`;
     const qr = await QRCode.toDataURL(qrURL);
-    res.json({ success: true, qr });
+    res.json({success:true, qr});
 });
 
 // Visitor status page
@@ -66,7 +61,7 @@ app.get('/status/:id', (req,res)=>{
         });
     }
 
-    // Visitor message history
+    // Visitor messages
     if(ticket.visitorResponses.length){
         html += `<h3>Your Messages:</h3>`;
         ticket.visitorResponses.forEach(v=>{
@@ -78,15 +73,15 @@ app.get('/status/:id', (req,res)=>{
         });
     }
 
-    // Visitor follow-up form
-    html += `<h3>Send Follow-up / Appeal:</h3>`;
-    const allowFollowUp = !(ticket.status==='closed' || ticket.status==='declined') || ticket.status==='opened';
-    html += `<form method="POST" action="/followup/${ticket.id}" enctype="multipart/form-data">
-                <textarea name="message" placeholder="Your message" required></textarea><br>`;
+    // Follow-up form
+    const allowFollowUp = true; // Only text for appeals or follow-ups
+    html += `<h3>Send Follow-up / Appeal:</h3>
+             <form method="POST" action="/followup/${ticket.id}" enctype="multipart/form-data">
+                 <textarea name="message" placeholder="Your message" required></textarea><br>`;
     if(ticket.status==='opened'){
         html += `<input type="file" name="image" accept="image/*"><br>`;
     }
-    html += `<button type="submit"${!allowFollowUp?' disabled title="Cannot send follow-up on closed/declined tickets"':''}>Send Follow-up</button>
+    html += `<button type="submit"${!allowFollowUp?' disabled':''}>Send Follow-up</button>
              </form>`;
 
     res.send(html);
@@ -98,7 +93,6 @@ app.post('/followup/:id', upload.single('image'), (req,res)=>{
     const ticket = checkins.find(t => t.id == req.params.id);
     if(!ticket) return res.status(404).send("Ticket not found");
 
-    // If closed/declined, images are not allowed
     const img = (ticket.status==='opened') ? (req.file ? `/uploads/${req.file.filename}` : '') : '';
 
     ticket.visitorResponses.push({
@@ -107,9 +101,9 @@ app.post('/followup/:id', upload.single('image'), (req,res)=>{
         timestamp: new Date()
     });
 
-    // If ticket was declined/closed, submitting a follow-up re-opens it
-    if(ticket.status==='declined' || ticket.status==='closed'){
-        ticket.status = 'opened';
+    // Reopen if closed/declined
+    if(ticket.status==='closed' || ticket.status==='declined'){
+        ticket.status='opened';
     }
 
     saveCheckins(checkins);
@@ -119,7 +113,6 @@ app.post('/followup/:id', upload.single('image'), (req,res)=>{
 // Admin dashboard
 app.get('/admin', (req,res)=>{
     const checkins = loadCheckins();
-
     const renderTicketRow = (t)=>{
         const lastAdmin = t.adminResponses.length ? new Date(t.adminResponses[t.adminResponses.length-1].timestamp) : 0;
         const hasNew = t.visitorResponses.some(v=>new Date(v.timestamp) > lastAdmin);
@@ -140,18 +133,16 @@ app.get('/admin', (req,res)=>{
         {title:'Accepted / In Progress', filter: t=>t.status==='accepted'},
         {title:'Closed / Declined', filter: t=>t.status==='closed'||t.status==='declined'}
     ];
-
     categories.forEach(cat=>{
         html+=`<h2>${cat.title}</h2><table border="1">
             <tr><th>Name</th><th>Email</th><th>Phone</th><th>Request</th><th>Status</th><th>Actions</th></tr>`;
         checkins.filter(cat.filter).forEach(t=>{ html+=renderTicketRow(t); });
         html+=`</table>`;
     });
-
     res.send(html);
 });
 
-// Admin review page with formatting buttons
+// Admin review page with rich text
 app.get('/review/:id', (req,res)=>{
     const checkins = loadCheckins();
     const t = checkins.find(c=>c.id==req.params.id);
@@ -159,25 +150,29 @@ app.get('/review/:id', (req,res)=>{
 
     const declineOptions = ['Incomplete info','Not eligible','Other'];
 
-    let html = `
-    <h1>Review Ticket: ${t.name}</h1>
-    <p><strong>Original Request:</strong> ${t.request}</p>
+    let html = `<h1>Review Ticket: ${t.name}</h1>
+    <p><strong>Original Request:</strong> ${t.request}</p>`;
 
-    <h3>Visitor Messages:</h3>
-    ${t.visitorResponses.length ? t.visitorResponses.map(v=>`<div style="border:1px solid #ccc; padding:5px; margin-bottom:5px;">
+    // Visitor messages
+    html += `<h3>Visitor Messages:</h3>`;
+    html += t.visitorResponses.length ? t.visitorResponses.map(v=>`
+    <div style="border:1px solid #ccc; padding:5px; margin-bottom:5px;">
         ${v.message}
         ${v.image ? `<br><img src="${v.image}" style="max-width:100px;">` : ''}
         <br><small>${new Date(v.timestamp).toLocaleString()}</small>
-    </div>`).join(''):'<p>No visitor messages yet.</p>'}
+    </div>`).join('') : '<p>No visitor messages yet.</p>';
 
-    <h3>Admin Responses:</h3>
-    ${t.adminResponses.length ? t.adminResponses.map(a=>`<div style="border:1px solid #007bff; padding:5px; margin-bottom:5px; background:#f0f8ff">
+    // Admin messages
+    html += `<h3>Admin Responses:</h3>`;
+    html += t.adminResponses.length ? t.adminResponses.map(a=>`
+    <div style="border:1px solid #007bff; padding:5px; margin-bottom:5px; background:#f0f8ff">
         ${a.message}
-        ${a.website ? `<br><small>Cite: <a href="${a.website}" target="_blank">${a.website}</a></small>`:''}
+        ${a.website ? `<br><small>Cite: <a href="${a.website}" target="_blank">${a.website}</a></small>` : ''}
         <br><small>${new Date(a.timestamp).toLocaleString()}</small>
-    </div>`).join(''):'<p>No admin responses yet.</p>'}
+    </div>`).join('') : '<p>No admin responses yet.</p>';
 
-    <form method="POST" action="/respond/${t.id}">
+    // Review form
+    html += `<form method="POST" action="/respond/${t.id}">
         <label>Action:</label>
         <select id="actionSelect" name="action">
             <option value="">--Select--</option>
@@ -232,17 +227,16 @@ app.get('/review/:id', (req,res)=>{
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const selected = textarea.value.substring(start,end);
-        let insert = selected ? `<${tag}>${selected}</${tag}>` : `<${tag}></${tag}>`;
+        const insert = selected ? '<'+tag+'>'+selected+'</'+tag+'>' : '<'+tag+'></'+tag+'>';
         textarea.setRangeText(insert, start, end, 'end');
         textarea.focus();
     }
-    </script>
-    `;
+    </script>`;
 
     res.send(html);
 });
 
-// Admin respond handler
+// Admin respond
 app.post('/respond/:id', (req,res)=>{
     const checkins = loadCheckins();
     const t = checkins.find(c=>c.id==req.params.id);
