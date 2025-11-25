@@ -1,0 +1,19 @@
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; margin:0; padding:0; }
+.status-container, .admin-ticket-container { max-width:700px; margin:40px auto; background:#fff; padding:25px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); }
+h1{text-align:center;} h3{margin-top:25px; margin-bottom:15px; font-size:20px; border-bottom:1px solid #ddd; padding-bottom:5px;}
+.message-container{max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa;}
+.message-box{padding:14px 18px; border-radius:12px; max-width:70%; word-wrap:break-word; line-height:1.4; font-size:16px; position:relative;}
+.admin-box{background:#d0e6ff; border-left:4px solid #007bff; align-self:flex-start;}
+.visitor-box{background:#fff; border:1px solid #ccc; align-self:flex-end;}
+.message-meta{font-size:.75em; color:#555; margin-top:5px; text-align:right;}
+textarea, input[type="file"], button{width:100%; padding:12px; margin-top:10px; font-size:16px; border-radius:8px; border:1px solid #ccc; box-sizing:border-box;}
+textarea{resize:vertical; min-height:80px;}
+button{background:#007bff; color:white; border:none; cursor:pointer;}
+button:hover{background:#0056b3;}
+.version-number{font-size:.75em; color:#999; margin-top:15px; text-align:center;}
+.ticket-status-msg{margin-top:15px; font-weight:bold; color:#d9534f; text-align:center;}
+.message-box img{max-width:150px; border-radius:8px; margin-top:5px;}
+.new-dot{color:red; font-size:1.2em; margin-left:5px;}
+.ticket-summary{padding:10px 0; border-bottom:1px solid #eee;}
+.ticket-summary a{text-decoration:none; color:#007bff; font-weight:bold;}
+.ticket-summary a:hover{text-decoration:underline;}
