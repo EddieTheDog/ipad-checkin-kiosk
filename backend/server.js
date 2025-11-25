@@ -2,6 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import QRCode from 'qrcode';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -10,6 +15,10 @@ app.use(express.json());
 const DATA_FILE = './checkins.json';
 const PORT = process.env.PORT || 3000;
 
+// Serve frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
+
 // Helpers
 const loadCheckins = () => fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : [];
 const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
@@ -17,17 +26,16 @@ const saveCheckins = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, 
 // Create check-in and generate QR
 app.post('/checkin', async (req, res) => {
     const checkins = loadCheckins();
-    const id = Date.now(); // simple unique ID
+    const id = Date.now();
     const newCheckin = { id, ...req.body, status: 'pending', timestamp: new Date() };
     checkins.push(newCheckin);
     saveCheckins(checkins);
 
-    // Generate QR code linking to status page
     const qr = await QRCode.toDataURL(`${req.protocol}://${req.get('host')}/status/${id}`);
     res.json({ success: true, qr });
 });
 
-// Admin dashboard to approve/deny
+// Admin dashboard
 app.get('/admin', (req, res) => {
     const checkins = loadCheckins();
     let html = `<h1>Admin Dashboard</h1><table border="1"><tr><th>Name</th><th>Email</th><th>Phone</th><th>Meeting With</th><th>Notes</th><th>Status</th><th>Actions</th></tr>`;
@@ -49,15 +57,13 @@ app.get('/admin', (req, res) => {
     res.send(html);
 });
 
-// Approve
+// Approve / Deny
 app.get('/approve/:id', (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
     if (c) { c.status = 'approved'; saveCheckins(checkins); }
     res.redirect('/admin');
 });
-
-// Deny
 app.get('/deny/:id', (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
@@ -65,7 +71,7 @@ app.get('/deny/:id', (req, res) => {
     res.redirect('/admin');
 });
 
-// Status page
+// Visitor status page
 app.get('/status/:id', (req, res) => {
     const checkins = loadCheckins();
     const c = checkins.find(c => c.id == req.params.id);
@@ -75,7 +81,7 @@ app.get('/status/:id', (req, res) => {
     if (c.status === 'denied') {
         html += `<p>Unfortunately, you are not approved. Please contact reception for further instructions.</p>`;
     } else if (c.status === 'approved') {
-        html += `<p>You are approved! Please proceed to the meeting or follow instructions.</p>`;
+        html += `<p>You are approved! Please proceed to your meeting or follow instructions.</p>`;
     } else {
         html += `<p>Your check-in is pending approval. Please wait.</p>`;
     }
