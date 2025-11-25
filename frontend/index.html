@@ -9,12 +9,11 @@
 <body>
 <div class="kiosk-container">
   <h1>Submit a Help Request</h1>
-  <form id="checkinForm" enctype="multipart/form-data">
+  <form id="checkinForm">
       <input type="text" name="name" placeholder="Full Name" required>
       <input type="email" name="email" placeholder="Email" required>
       <input type="tel" name="phone" placeholder="Phone Number" required>
       <textarea name="request" placeholder="Describe your issue" required></textarea>
-      <input type="file" name="image" accept="image/*">
       <button type="submit">Submit Request</button>
   </form>
   <p id="message"></p>
