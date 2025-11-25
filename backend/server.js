@@ -40,17 +40,17 @@ app.post('/checkin', async (req,res)=>{
     res.json({success:true, qr});
 });
 
-// Visitor status page (boxes, cannot send until admin message)
+// Visitor status page
 app.get('/status/:id', (req,res)=>{
     const checkins = loadCheckins();
     const ticket = checkins.find(t => t.id == req.params.id);
     if(!ticket) return res.send("<h1>Ticket not found</h1>");
 
     let html = `<div class="status-container">
-    <h1>Hello ${ticket.name}</h1>
-    <p>Status: <strong>${ticket.status}</strong></p>
-    <h3>Conversation:</h3>
-    <div class="message-container">`;
+        <h1>Hello ${ticket.name}</h1>
+        <p>Status: <strong>${ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}</strong></p>
+        <h3>Conversation:</h3>
+        <div class="message-container">`;
 
     const messages = [];
     ticket.adminResponses.forEach(a=>messages.push({type:'admin', text:a.message, website:a.website, timestamp:a.timestamp}));
@@ -66,18 +66,23 @@ app.get('/status/:id', (req,res)=>{
                  </div>`;
     });
 
-    // Check if visitor can send
-    const canSend = ticket.adminResponses.length>0 && ticket.status==='opened';
+    html += `</div>`;
 
-    html += `</div>
-    <h3>Send Follow-up / Appeal:</h3>
-    <form method="POST" action="/followup/${ticket.id}" enctype="multipart/form-data">
-        <textarea name="message" placeholder="Your message" required ${canSend ? '' : 'disabled'}></textarea><br>
-        ${ticket.status==='opened' && canSend ? '<input type="file" name="image" accept="image/*"><br>' : ''}
-        <button type="submit" ${canSend ? '' : 'disabled'}>Send</button>
-        ${!canSend ? '<p style="color:red;">You cannot send a message until the admin responds.</p>' : ''}
-    </form></div>`;
+    // Only show form if ticket is opened AND admin has responded at least once
+    if(ticket.status==='opened' && ticket.adminResponses.length > 0){
+        html += `<h3>Send Follow-up / Appeal:</h3>
+            <form method="POST" action="/followup/${ticket.id}" enctype="multipart/form-data">
+                <textarea name="message" placeholder="Your message" required></textarea><br>
+                <input type="file" name="image" accept="image/*"><br>
+                <button type="submit">Send</button>
+            </form>`;
+    } else if(ticket.status==='closed' || ticket.status==='declined'){
+        html += `<p class="ticket-status-msg">This ticket is ${ticket.status}. You can no longer send a response. Please open a new ticket if needed.</p>`;
+    } else {
+        html += `<p class="ticket-status-msg">Waiting for admin response before you can reply.</p>`;
+    }
 
+    html += `<p class="version-number">Version 1.0.0</p></div>`;
     res.send(html);
 });
 
@@ -87,21 +92,17 @@ app.post('/followup/:id', upload.single('image'), (req,res)=>{
     const ticket = checkins.find(t => t.id == req.params.id);
     if(!ticket) return res.status(404).send("Ticket not found");
 
-    if(ticket.adminResponses.length===0){
-        return res.status(403).send("Cannot send message until admin responds");
+    if(ticket.adminResponses.length===0 || ticket.status!=='opened'){
+        return res.status(403).send("Cannot send message");
     }
 
-    const img = (ticket.status==='opened') ? (req.file ? `/uploads/${req.file.filename}` : '') : '';
+    const img = req.file ? `/uploads/${req.file.filename}` : '';
 
     ticket.visitorResponses.push({
         message: req.body.message,
         image: img,
         timestamp: new Date()
     });
-
-    if(ticket.status==='closed' || ticket.status==='declined'){
-        ticket.status='opened';
-    }
 
     saveCheckins(checkins);
     res.redirect(`/status/${ticket.id}`);
@@ -139,7 +140,7 @@ app.get('/admin', (req,res)=>{
     res.send(html);
 });
 
-// Admin review page (rich text)
+// Admin review page with formatting
 app.get('/review/:id', (req,res)=>{
     const checkins = loadCheckins();
     const t = checkins.find(c=>c.id==req.params.id);
@@ -200,6 +201,8 @@ app.get('/review/:id', (req,res)=>{
         <br><button type="submit">Submit</button>
     </form>
     <br><a href="/admin">Back to Dashboard</a>
+
+    <p class="version-number">Version 1.0.0</p>
 
     <script>
     document.getElementById('actionSelect').addEventListener('change', function(){
