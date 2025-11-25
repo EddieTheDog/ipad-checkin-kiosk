@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkinForm');
     const message = document.getElementById('message');
-    const BACKEND_URL = 'https://ipad-helpdesk-kiosk.onrender.com'; // Replace with your Render URL
+
+    // Your backend URL on Render
+    const BACKEND_URL = 'https://ipad-helpdesk-kiosk.onrender.com';
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -30,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error(err);
-            message.textContent = "Network error. Is the backend URL correct?";
+            message.textContent = "Network error. Check your backend URL.";
         } finally {
             form.querySelector('button').disabled = false;
         }
